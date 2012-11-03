@@ -33,7 +33,7 @@
                         }
                     };
 
-                    window.plugins.childBrowser.showWebPage( getAuthorizeUrl(loginUrl, clientId, redirectUri), false );
+                    window.plugins.childBrowser.showWebPage( getAuthorizeUrl(loginUrl, clientId, redirectUri), { showLocationBar: true } );
                 });
             });
 
