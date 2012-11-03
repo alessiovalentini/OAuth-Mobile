@@ -1,0 +1,105 @@
+<html>
+  <head>
+    <script type="text/javascript" src="js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript" src="js/forcetk.js"></script>
+    <script src="phonegap.js"></script>
+    <script type="text/javascript" src="js/childbrowser.js"></script>
+
+    <script type="text/javascript" charset="utf-8">
+
+        // OAuth Configuration
+        var loginUrl    = 'https://login.salesforce.com/';
+        var clientId    = '3MVG98XJQQAccJQeEL1KLBnfwOwQef6waxmKVofVR9fyboki1tEfZBIGUxxekqrH.jdWeANPvKWUr.mCVQZE5';
+        var redirectUri = 'https://login.salesforce.com/services/oauth2/success';
+        var client      = new forcetk.Client(clientId, loginUrl);
+
+        document.addEventListener( "deviceready" , onDeviceReady, false);
+
+        function onDeviceReady() {
+
+            $(document).ready(function() {
+
+                $('button[action=login]').click(function(e) {
+
+                    e.preventDefault();
+
+                    window.plugins.childBrowser.onLocationChange = function (loc) {
+
+                        if (loc.startsWith( redirectUri )) {
+
+                            window.plugins.childBrowser.close();
+
+                            sessionCallback(unescape(loc));
+                        }
+                    };
+
+                    window.plugins.childBrowser.showWebPage( getAuthorizeUrl(loginUrl, clientId, redirectUri), false );
+                });
+            });
+
+        }
+
+    </script>
+
+    <script type="text/javascript">
+
+        // Make our own startsWith utility fn
+        String.prototype.startsWith = function(str) {
+            return (this.substr(0, str.length) === str);
+        }
+
+        function getAuthorizeUrl(loginUrl, clientId, redirectUri){
+            return loginUrl+'services/oauth2/authorize?display=touch'
+                +'&response_type=token&client_id='+escape(clientId)
+                +'&redirect_uri='+escape(redirectUri);
+        }
+
+        function sessionCallback(loc) {
+
+            var oauthResponse = {};
+
+            var fragment = loc.split("#")[1];
+
+            if (fragment) {
+                var nvps = fragment.split('&');
+                for (var nvp in nvps) {
+                    var parts = nvps[nvp].split('=');
+                    oauthResponse[parts[0]] = unescape(parts[1]);
+                }
+            }
+
+            if (typeof oauthResponse === 'undefined'
+                || typeof oauthResponse['access_token'] === 'undefined') {
+                errorCallback({
+                              status: 0,
+                              statusText: 'Unauthorized',
+                              responseText: 'No OAuth response'
+                              });
+            } else {
+
+                // set token and refresh
+                client.setSessionToken(oauthResponse.access_token, null, oauthResponse.instance_url);
+                client.setRefreshToken(oauthResponse.refresh_token);
+
+                client.query("SELECT Name FROM Account LIMIT 1",
+                    function(response){
+                        $('#message').html('The first account is '
+                        +response.records[0].Name);
+                    },
+                    function(response){
+                        $('#message').html( response );
+                    }
+                );
+
+                // debug
+                console.log('OAuth response:' , oauthResponse);
+                console.log('Clien         :' , client);
+            }
+        }
+
+    </script>
+
+    <button action="login">Login with Salesforce</button>
+    <p id="message"></p>
+
+</html>
